@@ -1,25 +1,21 @@
 Knapi
 =====
 
-The Knapi API Valet is designed to be a universal REST API toolkit for .NET. 
-It will get you connected to any REST API in a matter of seconds.
+The Knapi API Valet is designed to be a lightweight universal REST API toolkit for .NET. 
+It will get you connected to any (JSON) REST API in a matter of seconds.
 
 Features:
 
-- Trottling
-- Dynamic JSON deserialization (thanks to Json.Net)
+- Throttling
+- Dynamic JSON deserialization
 
 
-Quick example using AngelList:
+Quick example using AngelList, which has a 1000 requests her hour limit:
 
 	Knapi.Service angel = new Knapi.Service("https://api.angel.co/1/");
 
-	// AngelList limits their API to 1000 requests per hour, so...
 	angel.throttle.callCount = 1000;
 	angel.throttle.seconds = 60 * 60;
-
-	// Be considerate and let the server know who you are
-	angel.headers.Add("From", "me@myserver.com");
 
 	dynamic results = angel.Get("jobs");
 
@@ -27,7 +23,6 @@ Quick example using AngelList:
 	{
 		Console.WriteLine(job.title);
 	}
-
 
 To do:
 
