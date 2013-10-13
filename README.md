@@ -10,7 +10,7 @@ Features:
 - Dynamic JSON deserialization
 
 
-Quick example using AngelList, which has a 1000 requests her hour limit:
+Quick example that calls AngelList, which has a 1000 requests per hour limit:
 
 	Knapi.Service angel = new Knapi.Service("https://api.angel.co/1/");
 
