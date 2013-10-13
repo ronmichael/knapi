@@ -1,8 +1,8 @@
-Knapi API Valet: Universal REST API toolkit for .NET
-=======================================================
+Knapi
+=====
 
-Knapi is designed to be a simple toolkit to get you connected to any REST API
-in a matter of seconds.
+The Knapi API Valet is designed to be a universal REST API toolkit for .NET. 
+It will get you connected to any REST API in a matter of seconds.
 
 Features:
 
@@ -21,7 +21,7 @@ Quick example using AngelList:
 	// Be considerate and let the server know who you are
 	angel.headers.Add("From", "me@myserver.com");
 
-	dynamic results = angel.Get("jobs?page=" + page);
+	dynamic results = angel.Get("jobs");
 
 	foreach (dynamic job in results.jobs)
 	{
