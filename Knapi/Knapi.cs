@@ -9,14 +9,14 @@ using System.Web;
 using Newtonsoft.Json;
 using System.Collections;
 using System.Threading;
+using System.Web;
 
 
 namespace Knapi
 {
     public class Service
     {
-
-
+        
         public class Throttle
         {
             public int callCount = 0;
@@ -62,9 +62,24 @@ namespace Knapi
 
 
 
-        public dynamic Get(string cmd)
+        public dynamic Get(string url, dynamic parameters = null)
         {
-            string response = Http(baseUrl + cmd);
+            string data = "";
+
+            if(parameters!=null)
+            {
+                Type px = parameters.GetType();
+                foreach(var x in px.GetProperties())
+                {
+                    data += HttpUtility.UrlEncode(x.Name) + "=" + HttpUtility.UrlEncode(x.GetValue(parameters, null));
+                }
+                if (url.Contains("?")) url += "&";
+                else url += "?";
+                url += data;
+            }
+            
+            string response = Http(baseUrl + url);
+
             return JsonConvert.DeserializeObject(response);
 
         }
