@@ -10,6 +10,11 @@ Features:
 - Throttling
 - Dynamic JSON deserialization
 
+Installation
+-------------------------------------------------------------
+Knapi is available via NuGet (https://www.nuget.org/packages/Knapi) can can be installed from the Package Manager:
+
+	PM> Install-Package Knapi
 
 Examples
 --------------------------
