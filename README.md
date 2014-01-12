@@ -51,10 +51,29 @@ Make a secure query to Facebook's open graph using the Knapi Facebook helper:
 
     Console.WriteLine("Permissions check: " + results);
 
+Get some data about threads from Disqus:
+
+	Knapi.Service dq = new Knapi.Service("https://disqus.com/api/3.0/");
+
+    dq.parameters.Add("access_token", my_access_token);
+    dq.parameters.Add("api_key", my_api_key);
+    dq.parameters.Add("api_secret", my_api_secret);
+
+    dq.headers.Add("headername", "can set HTTP headers too");
+
+    var output = dq.Get("threads/set.json", new
+    {
+        thread = new string[] { "link:http://myhome.com", "link:http://yourhome.com" }
+    });
+
 
 
 Change history
 --------------------------
+
+1.0.2 - January 12th, 2014
+- Added parameters option to main class to set parameters that are passed with all API calls
+- Updated Get to accept string arrays in parameters
 
 1.0.1 - November 4th, 2013
 - Added tests

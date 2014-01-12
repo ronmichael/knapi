@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System.Collections;
 using System.Threading;
 using System.Web;
+using System.Diagnostics;
 
 
 namespace Knapi
@@ -34,6 +35,7 @@ namespace Knapi
         public Throttle throttle { get; set; }
         public string baseUrl { get; set; }
         public Dictionary<string, string> headers { get; set; }
+        public Dictionary<string, string> parameters { get; set; }
 
 
         public DateTime? lastCall { get; set; }
@@ -55,6 +57,7 @@ namespace Knapi
         {
             callCount = 0;
             headers = new Dictionary<string, string>();
+            parameters = new Dictionary<string, string>();
             throttle = new Throttle();
 
         }
@@ -62,23 +65,84 @@ namespace Knapi
 
 
 
-        public dynamic Get(string url, dynamic parameters = null)
+        public dynamic Get(string url, dynamic requestParameters = null)
         {
             string data = "";
 
-            if(parameters!=null)
+            if(parameters.Count>0)
             {
-                Type px = parameters.GetType();
-                foreach(var x in px.GetProperties())
+
+                foreach (KeyValuePair<string, string> pr in parameters)
                 {
-                    data += HttpUtility.UrlEncode(x.Name) + "=" + HttpUtility.UrlEncode(x.GetValue(parameters, null));
+                    if (data.Length > 0) data += "&";
+                    data += HttpUtility.UrlEncode(pr.Key) + "=" + HttpUtility.UrlEncode(pr.Value);
                 }
-                if (url.Contains("?")) url += "&";
-                else url += "?";
-                url += data;
+
             }
+
+            if (requestParameters != null)
+            {
+                Type px = requestParameters.GetType();
+                foreach (var x in px.GetProperties())
+                {
+                    if (x.GetValue(requestParameters, null) is string[])
+                    {
+                        string[] xx = x.GetValue(requestParameters, null);
+                        foreach (string y in xx)
+                        {
+                            if (data.Length > 0) data += "&";
+                            data += HttpUtility.UrlEncode(x.Name + "[]") + "=" + HttpUtility.UrlEncode(y);
+                        }
+                    }
+                    else
+                    {
+                        if (data.Length > 0) data += "&";
+                        data += HttpUtility.UrlEncode(x.Name) + "=" + HttpUtility.UrlEncode(x.GetValue(requestParameters, null));
+                    }
+
+                }
+            }
+
+            if (url.Contains("?")) url += "&";
+            else url += "?";
+            url += data;
+
+            Debug.WriteLine(baseUrl + url);
             
             string response = Http(baseUrl + url);
+
+            return JsonConvert.DeserializeObject(response);
+
+        }
+
+
+        public dynamic Post(string url, dynamic parameters = null)
+        {
+            string data = "";
+
+            if (parameters != null)
+            {
+                Type px = parameters.GetType();
+                foreach (var x in px.GetProperties())
+                {
+                    if (x.GetValue(parameters, null) is string[])
+                    {
+                        string[] xx = x.GetValue(parameters, null);
+                        foreach (string y in xx)
+                        {
+                            if (data.Length > 0) data += "&";
+                            data += HttpUtility.UrlEncode(x.Name + "[]") + "=" + HttpUtility.UrlEncode(y);
+                        }
+                    }
+                    else
+                    {
+                        data += HttpUtility.UrlEncode(x.Name) + "=" + HttpUtility.UrlEncode(x.GetValue(parameters, null));
+                    }
+
+                }
+            }
+
+            string response = Http(baseUrl, "POST", data);
 
             return JsonConvert.DeserializeObject(response);
 
