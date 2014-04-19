@@ -11,10 +11,13 @@ using System.Collections;
 using System.Threading;
 using System.Web;
 using System.Diagnostics;
-
+using System.Dynamic;
 
 namespace Knapi
 {
+
+    public enum ApiType { HTTP, JSON };
+
     public class Service
     {
         
@@ -32,27 +35,40 @@ namespace Knapi
         }
 
 
+        
+
         public Throttle throttle { get; set; }
         public string baseUrl { get; set; }
         public Dictionary<string, string> headers { get; set; }
         public Dictionary<string, string> parameters { get; set; }
-
-
+        public ApiType SvcApiType { get; set; }
+        public ICredentials Credentials { get; set; }
         public DateTime? lastCall { get; set; }
         public int callCount { get; set; }
-        
+
+
         public Service()
         {
             Startup();
+            SvcApiType = ApiType.HTTP;
         }
 
         public Service(string baseUrl)
         {
             this.baseUrl = baseUrl;
+            SvcApiType = ApiType.HTTP;
             Startup();
 
         }
-        
+
+        public Service(string baseUrl, ApiType aptype )
+        {
+            this.baseUrl = baseUrl;
+            this.SvcApiType = aptype;
+            Startup();
+
+        }
+
         private void Startup()
         {
             callCount = 0;
@@ -107,47 +123,90 @@ namespace Knapi
             else url += "?";
             url += data;
 
-            Debug.WriteLine(baseUrl + url);
-            
-            string response = Http(baseUrl + url);
+            if (!url.StartsWith("http://") && !url.StartsWith("https://")) url = baseUrl + url;
+            string response = Http(url);
 
             return JsonConvert.DeserializeObject(response);
 
         }
 
 
-        public dynamic Post(string url, dynamic parameters = null)
+        public dynamic Post(string url, dynamic requestParameters = null)
         {
             string data = "";
 
-            if (parameters != null)
+
+            if (SvcApiType == ApiType.JSON)
             {
-                Type px = parameters.GetType();
-                foreach (var x in px.GetProperties())
+                Dictionary<string, string> dx = new Dictionary<string, string>();
+
+                foreach (KeyValuePair<string, string> pr in parameters) dx.Add(pr.Key, pr.Value);
+                if (requestParameters != null)
                 {
-                    if (x.GetValue(parameters, null) is string[])
+                    Type px = requestParameters.GetType();
+                    foreach (var x in px.GetProperties())
                     {
-                        string[] xx = x.GetValue(parameters, null);
-                        foreach (string y in xx)
+                        if (x.GetValue(requestParameters, null) is string[])
                         {
-                            if (data.Length > 0) data += "&";
-                            data += HttpUtility.UrlEncode(x.Name + "[]") + "=" + HttpUtility.UrlEncode(y);
+                            string[] xx = x.GetValue(requestParameters, null);
+                            foreach (string y in xx) dx.Add(x.Name, y);
                         }
+                        else
+                        {
+                            dx.Add(x.Name, x.GetValue(requestParameters, null));
+                        }
+
                     }
-                    else
+
+                }
+
+                data =  JsonConvert.SerializeObject(dx);
+
+            }
+            else
+            {
+
+                if (parameters.Count > 0)
+                {
+
+                    foreach (KeyValuePair<string, string> pr in parameters)
                     {
-                        data += HttpUtility.UrlEncode(x.Name) + "=" + HttpUtility.UrlEncode(x.GetValue(parameters, null));
+                        if (data.Length > 0) data += "&";
+                        data += HttpUtility.UrlEncode(pr.Key) + "=" + HttpUtility.UrlEncode(pr.Value);
+                    }
+
+                }
+
+                if (requestParameters != null)
+                {
+                    Type px = requestParameters.GetType();
+                    foreach (var x in px.GetProperties())
+                    {
+                        if (x.GetValue(requestParameters, null) is string[])
+                        {
+                            string[] xx = x.GetValue(requestParameters, null);
+                            foreach (string y in xx)
+                            {
+                                if (data.Length > 0) data += "&";
+                                data += HttpUtility.UrlEncode(x.Name + "[]") + "=" + HttpUtility.UrlEncode(y);
+                            }
+                        }
+                        else
+                        {
+                            data += HttpUtility.UrlEncode(x.Name) + "=" + HttpUtility.UrlEncode(x.GetValue(requestParameters, null));
+                        }
+
                     }
 
                 }
             }
 
-            string response = Http(baseUrl, "POST", data);
 
+            if (!url.StartsWith("http://") && !url.StartsWith("https://")) url = baseUrl + url;
+            string response = Http(url, "POST", data);
             return JsonConvert.DeserializeObject(response);
 
         }
-
 
 
 
@@ -168,14 +227,17 @@ namespace Knapi
             lastCall = DateTime.Now;
 
             string output = "";
-
+            
             //string key = "";
             //var encKey = Convert.ToBase64String(Encoding.Default.GetBytes(key + ":"));
             //request.Headers.Add("Authorization", "Basic " + encKey);
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = method;
+            if (Credentials != null) request.Credentials = Credentials;
 
+
+            
             request.UserAgent = "Knapi 0.1";
 
             foreach (KeyValuePair<string,string> header in headers)
@@ -189,7 +251,7 @@ namespace Knapi
             }
 
 
-            request.ContentType = "application/json";
+            request.ContentType = "application/json"; // but it's not really always json?
             request.Accept = "application/json";
 
             if (data.Length > 0)
@@ -204,9 +266,18 @@ namespace Knapi
 
 
             // check for Retry-After response header (# of seconds to wait)
-
-            output = new StreamReader(request.GetResponse().GetResponseStream()).ReadToEnd();
-
+            try
+            {
+                output = new StreamReader(request.GetResponse().GetResponseStream()).ReadToEnd();
+            }
+            catch(WebException err)
+            {
+                if(err.Response!=null)
+                {
+                    // assume the response is in json ... works for Stormpath, perhaps not others
+                    output = new StreamReader(err.Response.GetResponseStream()).ReadToEnd();
+                }
+            }
             return output;
 
 

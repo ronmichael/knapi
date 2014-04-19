@@ -66,10 +66,40 @@ Get some data about threads from Disqus:
         thread = new string[] { "link:http://myhome.com", "link:http://yourhome.com" }
     });
 
+Verify and retrieve user login at Stormpath:
+
+    Knapi.Service stormpath = new Knapi.Service("https://api.stormpath.com/v1/applications/$YOUR_APPLICATION_ID/", Knapi.ApiType.JSON);
+
+    stormpath.Credentials = new NetworkCredential("$YOUR_API_KEY_ID", "$YOUR_API_KEY_SECRET");
+
+    stormpath.parameters.Add("type", "basic");
+    stormpath.parameters.Add("value", Knapi.Tools.Base64Encode("%USER_NAME", "%PASSWORD"));
+
+    dynamic results = stormpath.Post("loginAttempts");
+
+    if (results.account != null) 
+    {
+        stormpath.parameters.Clear();
+        dynamic account = stormpath.Get(results.account.href);
+        string email = account.email;
+        string name = account.fullName;
+    }
+    else
+    {
+        // authentication failed
+    }
+
 
 
 Change history
 --------------------------
+
+1.0.3 - April 19th, 2014
+- Fixed compeltely broken Post function
+- Added Tools class with new Base64Encode function for typical username & password encoding
+- Added Credentials property (allowing basic HTTPS authentication, etc)
+- Added SvcApiType property to set whether data is posted as HTTP form (default) or JSON; used for Post, not Get
+- WebException during HTTP request will now try to return results as parsed JSON
 
 1.0.2 - January 12th, 2014
 - Added parameters option to main class to set parameters that are passed with all API calls
@@ -87,11 +117,9 @@ To do:
 --------------------------
 
 - Allow async calls
-- Error handling
+- Better error handling
 - Handle Retry-After responses from server
 - Allow throttle bursting; custom throttle handler?
-- Built in support for Authorization encoding?
 - Built in support for cookies
 - Handle XML
-- Allow for POST
 
